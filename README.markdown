@@ -2,7 +2,7 @@
 
 This gem provides two capistrano tasks:
 
-* `nginx:setup` -- creates /etc/nginx/sites-available/YOUR\_APP and links it to /etc/nginx/sites-enabled/YOUR\_APP
+* `nginx:setup` -- creates #{nginx_conf_path}/#{application}.conf
 * `nginx:reload` -- invokes `/etc/init.d/nginx reload` on server
 
 And nginx configuration file generator, that will create local copy of default nginx config for customization.
@@ -33,6 +33,7 @@ Make sure, following variables are defined in your `config/deploy.rb`:
 * `server_name` - your application's server_name in nginx (e.g. `example.com`)
 * `deploy_to` - deployment path
 * `sudo_user` - user name with sudo privileges (needed to config/restart nginx)
+* `nginx_conf_path` - nginx conf path
 
 Launch new tasks:
 
