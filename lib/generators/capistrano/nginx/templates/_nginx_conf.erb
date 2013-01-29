@@ -1,9 +1,9 @@
 upstream <%= application %> {
-  server <%= "unix:#{shared_path}/sockets/unicorn.sock fail_timeout=0" %>;
+  server <%= "unix:/tmp/unicorn.#{application}.sock fail_timeout=0" %>;
 }
 
 server {
-  client_max_body_size 4G;
+  client_max_body_size 100m;
   server_name <%= server_name %>;
   keepalive_timeout 5;
   root <%= "#{deploy_to}/current/public" %>;
@@ -13,6 +13,8 @@ server {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header Host $http_host;
     proxy_redirect off;
+    proxy_buffering on;
+    proxy_set_header X-Real-IP $remote_addr;
     proxy_pass http://<%= application %>;
   }
 
@@ -20,8 +22,52 @@ server {
     return 503;
   }
 
-  error_page 500 502 504 /500.html;
-  location = /500.html {
+  # Limit HTTP requests types
+  if ($request_method !~ ^(GET|HEAD|PUT|POST|DELETE|OPTIONS)$ ){
+    return 405;
+  }
+
+  location ~* ^/assets {
+    gzip_static on; # to serve pre-gzipped version
+    if ( -f $request_filename) {
+      expires 7d;
+      add_header Cache-Control public;
+      # Some browsers still send conditional-GET requests if there's a
+      # Last-Modified header or an ETag header even if they haven't
+      # reached the expiry date sent in the Expires header.
+      add_header Last-Modified "";
+      add_header ETag "";
+      access_log off;
+      break;
+    }
+  }
+
+  location ~* \.(jpg|gif|png|swf|ico)$ {
+    if ( -f $request_filename){
+      access_log off;
+      expires max;
+      break;
+    }
+  }
+
+  # There is no need to touch Rails stack for wrong urls (as well as extensions) in assets directories
+  location ~ ^/(assets|images|javascripts|stylesheets|system)/  {
+    error_page 404 /404.html;
+  }
+
+  # Block bots who like track urls (php usually)
+  # location ~ \.php$ {
+  #   deny  all;
+  # }
+
+  # # Enable monitoring of POST requests reported in JSON
+  # location /progress {
+  #   upload_progress_json_output;
+  #   report_uploads foobar_uploads;
+  # }
+
+  error_page 500 502 504 /50x.html;
+  location = /50x.html {
     root <%= "#{deploy_to}/current/public" %>;
   }
 
@@ -29,4 +75,12 @@ server {
   location @maintenance {
     rewrite  ^(.*)$  /system/maintenance.html break;
   }
+
+  # location /nginx_status {
+  #   # copied from http://blog.kovyrin.net/2006/04/29/monitoring-nginx-with-rrdtool/
+  #   stub_status on;
+  #   access_log   off;
+  #   # allow SOME.IP.ADD.RESS;
+  #   deny all;
+  # }
 }
