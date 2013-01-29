@@ -10,6 +10,7 @@ Capistrano::Configuration.instance.load do
       set :user, sudo_user
       put config, "/tmp/#{application}"
       run "#{sudo} mv /tmp/#{application} #{nginx_conf_path}/#{application}.conf"
+      run "#{sudo} chown root:root #{nginx_conf_path}/#{application}.conf"
       # run "#{sudo} ln -fs #{release_path}/config/deploy/nginx.conf /usr/local/nginx/conf/vhost/#{application}.conf"
     end
 
